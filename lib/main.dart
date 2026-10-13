@@ -18,9 +18,7 @@ void main() async {
 
   runApp(
     ProviderScope(
-      observers: [
-        TalkerRiverpodObserver(talker: talker),
-      ],
+      observers: [TalkerRiverpodObserver(talker: talker)],
       overrides: [
         sharedPreferencesProvider.overrideWithValue(sharedPreferences),
       ],
@@ -29,6 +27,7 @@ void main() async {
   );
 }
 
+//TODO
 class XStackApp extends ConsumerStatefulWidget {
   const XStackApp({super.key});
 
