@@ -8,6 +8,19 @@ class ApiConstants {
   static const String register = '/api/auth/register';
   static const String me = '/api/auth/me';
 
+  // Chat endpoints
+  static const String chats = '/api/chats';
+  static const String directChat = '/api/chats/direct';
+  static const String groupChat = '/api/chats/group';
+
+  static String messages(String chatId) => '/api/chats/$chatId/messages';
+
+  // Realtime (SignalR)
+  static const String chatHubPath = '/hubs/chat';
+
+  // User endpoints
+  static const String userSearch = '/api/users/search';
+
   // Headers
   static const String authHeader = 'Authorization';
   static const String bearerPrefix = 'Bearer ';

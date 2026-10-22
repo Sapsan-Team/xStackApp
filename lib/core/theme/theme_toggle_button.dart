@@ -17,21 +17,14 @@ class ThemeToggleButton extends ConsumerWidget {
     };
 
     return IconButton(
-      tooltip: l10n?.toggleThemeTooltip ?? 'Toggle theme',
-      icon: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 250),
-        transitionBuilder: (child, anim) => RotationTransition(
-          turns: anim,
-          child: FadeTransition(opacity: anim, child: child),
-        ),
-        child: Icon(
-          isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-          key: ValueKey(isDark),
-        ),
+      tooltip: '${l10n?.toggleThemeTooltip ?? 'Toggle theme'}  ctrl+shift+l',
+      icon: Icon(
+        isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+        size: 15,
       ),
-      onPressed: () {
-        ref.read(themeControllerProvider.notifier).toggleTheme(context);
-      },
+      onPressed: () => ref.read(themeControllerProvider.notifier).toggleTheme(
+        context,
+      ),
     );
   }
 }
