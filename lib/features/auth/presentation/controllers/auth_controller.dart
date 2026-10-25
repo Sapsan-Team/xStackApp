@@ -1,4 +1,5 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:xstackapp/core/network/session_events.dart';
 import 'package:xstackapp/features/auth/domain/usecases/auth_usecases_providers.dart';
 import 'package:xstackapp/features/auth/domain/usecases/login_usecase.dart';
 import 'package:xstackapp/features/auth/domain/usecases/register_usecase.dart';
@@ -9,7 +10,15 @@ final authControllerProvider =
 
 class AuthController extends Notifier<AuthState> {
   @override
-  AuthState build() => const AuthState();
+  AuthState build() {
+    // The network layer clears the tokens itself and reports it here; dropping
+    // to an unauthenticated state makes the router send the user to login.
+    final subscription = ref.read(sessionEventsProvider).expired.listen((_) {
+      state = const AuthState();
+    });
+    ref.onDispose(subscription.cancel);
+    return const AuthState();
+  }
 
   Future<void> checkAuthStatus() async {
     state = state.copyWith(isLoading: true, failure: null);

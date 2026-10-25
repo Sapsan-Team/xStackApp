@@ -23,6 +23,8 @@ abstract interface class AuthRemoteDataSource {
   });
 
   Future<UserModel> getCurrentUser();
+
+  Future<void> logout(String refreshToken);
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -73,5 +75,13 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     );
 
     return UserModel.fromJson(response.data!);
+  }
+
+  @override
+  Future<void> logout(String refreshToken) async {
+    await dioClient.post<void>(
+      ApiConstants.logout,
+      data: {'refreshToken': refreshToken},
+    );
   }
 }

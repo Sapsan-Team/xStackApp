@@ -42,7 +42,10 @@ class AuthRepositoryImpl implements AuthRepository {
         password: password,
       );
 
-      await tokenStorage.saveToken(tokenModel.accessToken);
+      await tokenStorage.saveTokens(
+        accessToken: tokenModel.accessToken,
+        refreshToken: tokenModel.refreshToken,
+      );
       await preferencesStorage.saveLastPhone(phoneNumber);
 
       return Right(tokenModel.toDomain());
@@ -73,7 +76,10 @@ class AuthRepositoryImpl implements AuthRepository {
         displayName: displayName,
       );
 
-      await tokenStorage.saveToken(tokenModel.accessToken);
+      await tokenStorage.saveTokens(
+        accessToken: tokenModel.accessToken,
+        refreshToken: tokenModel.refreshToken,
+      );
       await preferencesStorage.saveLastPhone(phoneNumber);
 
       return Right(tokenModel.toDomain());
@@ -101,7 +107,7 @@ class AuthRepositoryImpl implements AuthRepository {
       return Right(userModel.toDomain());
     } on ServerException catch (e) {
       if (e.statusCode == 401) {
-        await tokenStorage.deleteToken();
+        await tokenStorage.deleteTokens();
         return const Left(AuthFailure.sessionExpired());
       }
       return Left(ServerFailure(statusCode: e.statusCode, message: e.message));
@@ -115,7 +121,15 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<Failure, void>> logout() async {
     try {
-      await tokenStorage.deleteToken();
+      // Best-effort server-side revocation: a network failure must not keep
+      // the user logged in locally.
+      final refreshToken = await tokenStorage.getRefreshToken();
+      if (refreshToken != null && refreshToken.isNotEmpty) {
+        try {
+          await remoteDataSource.logout(refreshToken);
+        } catch (_) {}
+      }
+      await tokenStorage.deleteTokens();
       return const Right(null);
     } catch (e) {
       return Left(CacheFailure(e.toString()));

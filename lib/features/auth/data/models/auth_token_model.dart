@@ -8,6 +8,7 @@ part 'auth_token_model.g.dart';
 abstract class AuthTokenModel with _$AuthTokenModel {
   const factory AuthTokenModel({
     required String accessToken,
+    required String refreshToken,
     required String tokenType,
     required DateTime expiresAt,
   }) = _AuthTokenModel;
@@ -19,6 +20,7 @@ abstract class AuthTokenModel with _$AuthTokenModel {
 
   AuthToken toDomain() => AuthToken(
         accessToken: accessToken,
+        refreshToken: refreshToken,
         tokenType: tokenType,
         expiresAt: expiresAt,
       );

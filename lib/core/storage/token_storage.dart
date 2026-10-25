@@ -16,16 +16,23 @@ class TokenStorage {
   final FlutterSecureStorage _storage;
 
   static const String _tokenKey = 'jwt_access_token';
+  static const String _refreshTokenKey = 'jwt_refresh_token';
 
   // The keyring is shared by every process of this user session, so re-reading
   // it per request would let a parallel instance silently switch our identity
-  // to whoever logged in last. The token is pinned in memory on write/first
-  // read instead, and requests keep using the pinned value.
+  // to whoever logged in last. Tokens are pinned in memory on write/first read
+  // instead, and requests keep using the pinned values.
   String? _cachedToken;
+  String? _cachedRefreshToken;
 
-  Future<void> saveToken(String token) async {
-    _cachedToken = token;
-    await _storage.write(key: _tokenKey, value: token);
+  Future<void> saveTokens({
+    required String accessToken,
+    required String refreshToken,
+  }) async {
+    _cachedToken = accessToken;
+    _cachedRefreshToken = refreshToken;
+    await _storage.write(key: _tokenKey, value: accessToken);
+    await _storage.write(key: _refreshTokenKey, value: refreshToken);
   }
 
   Future<String?> getToken() async {
@@ -38,9 +45,21 @@ class TokenStorage {
     return token;
   }
 
-  Future<void> deleteToken() async {
+  Future<String?> getRefreshToken() async {
+    final cached = _cachedRefreshToken;
+    if (cached != null && cached.isNotEmpty) return cached;
+    final token = await _storage.read(key: _refreshTokenKey);
+    if (token != null && token.isNotEmpty) {
+      _cachedRefreshToken = token;
+    }
+    return token;
+  }
+
+  Future<void> deleteTokens() async {
     _cachedToken = null;
+    _cachedRefreshToken = null;
     await _storage.delete(key: _tokenKey);
+    await _storage.delete(key: _refreshTokenKey);
   }
 
   Future<bool> hasToken() async {

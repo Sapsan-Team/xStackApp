@@ -61,7 +61,12 @@ class ChatRealtimeService {
     final connection = HubConnectionBuilder()
         .withUrl(
           '${ApiConstants.baseUrl}${ApiConstants.chatHubPath}',
-          options: HttpConnectionOptions(accessTokenFactory: () async => token),
+          // Read the token per handshake: automatic reconnects can happen
+          // hours later, after the access token was refreshed.
+          options: HttpConnectionOptions(
+            accessTokenFactory: () async =>
+                await _ref.read(tokenStorageProvider).getToken() ?? '',
+          ),
         )
         .withAutomaticReconnect(retryDelays: const [0, 2000, 5000, 15000])
         .build();
