@@ -207,6 +207,33 @@ class ThreadController extends Notifier<ThreadState> {
     state = state.copyWith(messages: next);
   }
 
+  /// A per-user read cursor moved. [isMe] means it is our own cursor, so our
+  /// incoming messages become read; otherwise the other side read our messages
+  /// up to [lastReadMessageId].
+  void applyRead(
+    String chatId,
+    String lastReadMessageId, {
+    required bool isMe,
+  }) {
+    if (state.chatId != chatId) return;
+    final index = state.messages.indexWhere((m) => m.id == lastReadMessageId);
+    if (index < 0) return;
+
+    var changed = false;
+    final next = [...state.messages];
+    for (var i = 0; i <= index; i++) {
+      final message = next[i];
+      final shouldMark = isMe ? !message.isMine : message.isMine;
+      if (shouldMark && !message.isRead) {
+        next[i] = message.copyWith(isRead: true);
+        changed = true;
+      }
+    }
+    if (changed) {
+      state = state.copyWith(messages: next);
+    }
+  }
+
   Future<bool> send(String rawContent) async {
     final chatId = state.chatId;
     final content = rawContent.trim();

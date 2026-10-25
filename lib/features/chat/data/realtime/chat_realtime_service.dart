@@ -72,7 +72,7 @@ class ChatRealtimeService {
       ..on('ReceiveMessage', (args) => _onMessage(args, isEdit: false))
       ..on('MessageEdited', (args) => _onMessage(args, isEdit: true))
       ..on('MessageDeleted', _onMessageDeleted)
-      ..on('MessagesRead', (_) {})
+      ..on('MessagesRead', _onMessagesRead)
       ..on('UserTyping', _onUserTyping)
       ..on('UserPresenceChanged', _onPresenceChanged)
       ..onreconnected(({connectionId}) => _joinCurrentChat())
@@ -179,6 +179,25 @@ class ChatRealtimeService {
       _ref
           .read(threadControllerProvider.notifier)
           .applyDeleted(chatId, messageId);
+    }
+  }
+
+  /// Read cursors are per user. The event tells us whose cursor moved, so the
+  /// same payload both clears our own badge (read on another device) and marks
+  /// our messages as read by the other side.
+  void _onMessagesRead(List<Object?>? args) {
+    final chatId = args != null && args.isNotEmpty ? args[0] : null;
+    final userId = args != null && args.length > 1 ? args[1] : null;
+    final messageId = args != null && args.length > 2 ? args[2] : null;
+    if (chatId is! String || userId is! String || messageId is! String) return;
+
+    final isMe = userId == _myUserId;
+    _ref
+        .read(threadControllerProvider.notifier)
+        .applyRead(chatId, messageId, isMe: isMe);
+
+    if (isMe) {
+      _ref.read(chatsControllerProvider.notifier).markReadLocally(chatId);
     }
   }
 
