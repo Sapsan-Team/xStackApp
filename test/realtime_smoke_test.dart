@@ -10,6 +10,11 @@ import 'package:signalr_netcore/http_connection_options.dart';
 /// Live smoke test against the backend SignalR hub. Requires the API to run
 /// at http://127.0.0.1:5121. It exercises only hub round-trips (typing and
 /// presence) so it never writes anything into the database.
+///
+/// Skipped by default so `flutter test` stays hermetic; run it explicitly with
+/// `flutter test --dart-define=LIVE_API=true test/realtime_smoke_test.dart`.
+const bool _liveApi = bool.fromEnvironment('LIVE_API');
+
 void main() {
   const base = 'http://127.0.0.1:5121';
 
@@ -109,5 +114,5 @@ void main() {
         await listener.stop();
       } catch (_) {}
     }
-  }, timeout: const Timeout(Duration(seconds: 60)));
+  }, timeout: const Timeout(Duration(seconds: 60)), skip: !_liveApi);
 }

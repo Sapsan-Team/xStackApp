@@ -54,13 +54,13 @@ class WorkspaceScreen extends HookConsumerWidget {
       return null;
     }, const []);
 
-    // Background sync so the conversation keeps up with the other side of the
-    // thread: messages every tick, chat summaries every third one. Ticks are
-    // silent and merge-aware, so they never fight an in-flight send.
+    // Push-first: the hub subscribes the connection to every chat, so this
+    // timer is only a fallback for when the socket is down.
     useEffect(() {
       var summariesTick = 0;
       final timer = Timer.periodic(const Duration(seconds: 4), (_) {
         if (!ref.read(chatsControllerProvider).hasLoaded) return;
+        if (ref.read(chatRealtimeServiceProvider).isConnected) return;
         summariesTick += 1;
         if (summariesTick % 3 == 0) {
           ref.read(chatsControllerProvider.notifier).refresh(silent: true);
@@ -69,16 +69,6 @@ class WorkspaceScreen extends HookConsumerWidget {
       });
       return timer.cancel;
     }, const []);
-
-    // Follow the selection with the realtime hub room so push events for this
-    // thread arrive the moment they happen.
-    final selectedChatId = chatsState.selectedChatId;
-    useEffect(() {
-      if (selectedChatId != null) {
-        ref.read(chatRealtimeServiceProvider).enterChat(selectedChatId);
-      }
-      return null;
-    }, [selectedChatId]);
 
     useEffect(() {
       if (wide &&

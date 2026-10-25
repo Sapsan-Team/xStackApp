@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:signalr_netcore/hub_connection.dart';
 import 'package:signalr_netcore/hub_connection_builder.dart';
@@ -36,19 +38,15 @@ final chatRealtimeBinderProvider = Provider<void>((ref) {
 });
 
 /// Client of the backend SignalR hub (`/hubs/chat`). Delivers live messages,
-/// typing and presence events into the chat controllers. Connection failures
-/// are quiet: silent polling keeps working as a fallback, and the hub retries
-/// with automatic reconnects on its own.
+/// typing and presence events into the chat controllers. The hub subscribes
+/// the connection to every chat of the user on connect, so events arrive for
+/// all chats — not only the one that is open.
 class ChatRealtimeService {
   ChatRealtimeService(this._ref);
 
   final Ref _ref;
   HubConnection? _connection;
   String? _myUserId;
-
-  /// The chat whose room we aim to be in. Remembered even before a connection
-  /// exists, so `onreconnected` can rejoin after any drop.
-  String? _joinedChatId;
 
   bool get isConnected => _connection?.state == HubConnectionState.Connected;
 
@@ -75,7 +73,9 @@ class ChatRealtimeService {
       ..on('MessagesRead', _onMessagesRead)
       ..on('UserTyping', _onUserTyping)
       ..on('UserPresenceChanged', _onPresenceChanged)
-      ..onreconnected(({connectionId}) => _joinCurrentChat())
+      // The hub re-subscribes every chat on (re)connect. Anything that landed
+      // while the socket was down has to be pulled once.
+      ..onreconnected(({connectionId}) => _resync())
       ..onclose(({error}) {
         if (error != null) {
           talker.warning('realtime dropped: $error');
@@ -86,7 +86,6 @@ class ChatRealtimeService {
     try {
       await connection.start();
       talker.info('realtime connected');
-      await _joinCurrentChat();
     } catch (error) {
       talker.warning('realtime connect failed: $error');
       _connection = null;
@@ -99,18 +98,17 @@ class ChatRealtimeService {
   Future<void> disconnect() async {
     final connection = _connection;
     _connection = null;
-    _joinedChatId = null;
     if (connection == null) return;
     try {
       await connection.stop();
     } catch (_) {}
   }
 
-  /// Remember the chat to receive live events for and join its room right
-  /// away when already connected.
-  Future<void> enterChat(String chatId) async {
-    _joinedChatId = chatId;
-    await _joinCurrentChat();
+  /// After a reconnect the socket has been quiet for a while, so refresh the
+  /// chat list and the open thread instead of trusting the gap.
+  void _resync() {
+    unawaited(_ref.read(chatsControllerProvider.notifier).refresh(silent: true));
+    unawaited(_ref.read(threadControllerProvider.notifier).poll());
   }
 
   /// Throttled by the composer; safe to call even when disconnected.
@@ -123,18 +121,6 @@ class ChatRealtimeService {
     try {
       await connection.invoke('SendTyping', args: [chatId]);
     } catch (_) {}
-  }
-
-  Future<void> _joinCurrentChat() async {
-    final connection = _connection;
-    final chatId = _joinedChatId;
-    if (connection == null || chatId == null) return;
-    if (connection.state != HubConnectionState.Connected) return;
-    try {
-      await connection.invoke('JoinChat', args: [chatId]);
-    } catch (error) {
-      talker.warning('realtime join $chatId failed: $error');
-    }
   }
 
   /// Hub payloads reuse the REST [ChatMessage] JSON. One quirk: broadcasts

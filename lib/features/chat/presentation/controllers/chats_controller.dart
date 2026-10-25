@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:xstackapp/core/errors/failures.dart';
 import 'package:xstackapp/core/errors/failure_mapper.dart';
@@ -181,7 +183,12 @@ class ChatsController extends Notifier<ChatsState> {
   /// user (it reads the message on its own).
   void noteIncomingMessage(ChatMessage message, {bool isEdit = false}) {
     final index = state.chats.indexWhere((c) => c.id == message.chatId);
-    if (index < 0) return;
+    if (index < 0) {
+      // A chat we have never seen — someone started a conversation or added us
+      // to a group. Pull the list instead of silently dropping the message.
+      unawaited(refresh(silent: true));
+      return;
+    }
 
     final chat = state.chats[index];
     final isOpen = state.selectedChatId == chat.id;
